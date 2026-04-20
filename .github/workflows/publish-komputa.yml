@@ -1,0 +1,88 @@
+name: Publish Komputa fork packages
+
+# Temporary repackage of upstream Cleipnir.ResilientFunctions + PostgreSQL store
+# while upstream ships net10 packages. Revert to upstream `4.2.6+` when available.
+#
+# Packages published with original IDs + `-komputa.N` prerelease suffix:
+#   Cleipnir.ResilientFunctions 4.2.5-komputa.<N>
+#   Cleipnir.ResilientFunctions.PostgreSQL 4.2.5-komputa.<N>
+#
+# This means ProductOne's `Directory.Packages.props` references the original
+# package IDs with prerelease version — migration-back is a single version bump.
+
+on:
+  push:
+    tags:
+      - 'komputa-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 4.2.5-komputa.1)'
+        required: true
+        default: '4.2.5-komputa.1'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/komputa-v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build (core + PG store only — skipping MariaDB/SqlServer for speed)
+        run: |
+          dotnet build Core/Cleipnir.ResilientFunctions/Cleipnir.ResilientFunctions.csproj -c Release
+          dotnet build Stores/PostgreSQL/Cleipnir.ResilientFunctions.PostgreSQL/Cleipnir.ResilientFunctions.PostgreSQL.csproj -c Release
+
+      - name: Pack Cleipnir.ResilientFunctions (core)
+        run: |
+          dotnet pack Core/Cleipnir.ResilientFunctions/Cleipnir.ResilientFunctions.csproj \
+            -c Release \
+            --no-build \
+            -o packages \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:Authors='Thomas Stidsborg Sylvest (upstream author); Komputa (fork repackager)' \
+            -p:Copyright='Copyright (c) Thomas Stidsborg Sylvest' \
+            -p:PackageLicenseExpression=MIT \
+            -p:RepositoryUrl=https://github.com/johnkattenhorn/Cleipnir.ResilientFunctions \
+            -p:Description='Komputa repackage of Cleipnir.ResilientFunctions for .NET 10 (upstream main branch snapshot). Temporary — revert to upstream when Cleipnir.ResilientFunctions 4.2.6+ ships net10-native packages to nuget.org.'
+
+      - name: Pack Cleipnir.ResilientFunctions.PostgreSQL
+        run: |
+          dotnet pack Stores/PostgreSQL/Cleipnir.ResilientFunctions.PostgreSQL/Cleipnir.ResilientFunctions.PostgreSQL.csproj \
+            -c Release \
+            --no-build \
+            -o packages \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:Authors='Thomas Stidsborg Sylvest (upstream author); Komputa (fork repackager)' \
+            -p:Copyright='Copyright (c) Thomas Stidsborg Sylvest' \
+            -p:PackageLicenseExpression=MIT \
+            -p:RepositoryUrl=https://github.com/johnkattenhorn/Cleipnir.ResilientFunctions \
+            -p:Description='Komputa repackage of Cleipnir.ResilientFunctions.PostgreSQL for .NET 10 (upstream main branch snapshot). Temporary — revert to upstream when 4.2.6+ ships.'
+
+      - name: Push to GitHub Packages
+        run: |
+          dotnet nuget push "packages/*.nupkg" \
+            --source "https://nuget.pkg.github.com/johnkattenhorn/index.json" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate
+
+      - name: Summary
+        run: |
+          echo "## Published packages (version ${{ steps.ver.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          ls packages >> $GITHUB_STEP_SUMMARY
