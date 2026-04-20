@@ -56,7 +56,7 @@ jobs:
             --no-build \
             -o packages \
             -p:Version=${{ steps.ver.outputs.version }} \
-            -p:Authors='Thomas Stidsborg Sylvest (upstream author); Komputa (fork repackager)' \
+            -p:Authors='Thomas Stidsborg Sylvest' \
             -p:Copyright='Copyright (c) Thomas Stidsborg Sylvest' \
             -p:PackageLicenseExpression=MIT \
             -p:RepositoryUrl=https://github.com/johnkattenhorn/Cleipnir.ResilientFunctions \
@@ -69,7 +69,7 @@ jobs:
             --no-build \
             -o packages \
             -p:Version=${{ steps.ver.outputs.version }} \
-            -p:Authors='Thomas Stidsborg Sylvest (upstream author); Komputa (fork repackager)' \
+            -p:Authors='Thomas Stidsborg Sylvest' \
             -p:Copyright='Copyright (c) Thomas Stidsborg Sylvest' \
             -p:PackageLicenseExpression=MIT \
             -p:RepositoryUrl=https://github.com/johnkattenhorn/Cleipnir.ResilientFunctions \
